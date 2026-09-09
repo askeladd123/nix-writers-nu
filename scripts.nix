@@ -82,6 +82,16 @@ in {
 
   > Incompatible reimplementation of [pkgs.writers.writeNuBin](https://github.com/NixOS/nixpkgs/blob/release-26.05/pkgs/build-support/writers/scripts.nix).
 
+  # Example
+
+  ```nix
+  writeNuBin { deps = [pkgs.ripgrep]; } "format-matches" ''
+    def main [regexp: string]: any -> list<string> {
+      rg --json --regexp $regexp | lines | each { from json } | where type == 'match' | get data | each {|i| $'($i.path.text):($i.line_number)' }
+    }
+  '';
+  ```
+
   # Arguments
 
   deps
