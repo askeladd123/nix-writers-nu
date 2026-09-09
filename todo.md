@@ -1,0 +1,2 @@
+- [ ] docs: package to generate documentation with [nixdoc](https://github.com/nix-community/nixdoc/)
+- [ ] tests: create some tests
