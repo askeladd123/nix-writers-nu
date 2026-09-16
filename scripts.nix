@@ -5,22 +5,49 @@
   writeTextFile,
 }: let
   binDirs = packages: builtins.filter builtins.pathExists (map (pkg: "${lib.getBin pkg}/bin") packages);
-  nuStringWithDeps = deps: content: ''
-    # === : nix store dependencies
-    $env.path ++= [
-      ${lib.strings.join "\n\t" (binDirs deps)}
-    ]
+  nuStringWithCtx = {
+    deps ? [],
+    libs ? [],
+    plugins ? [],
+  }: content:
+    lib.concatStringsSep "\n\n" (
+      builtins.filter (s: s != "") [
+        (lib.optionalString (deps != [] || libs != [] || plugins != []) ''
+          # === : nix store dependencies
+        '')
 
-    # === : nushell code
-    ${content}
-  '';
+        (lib.optionalString (deps != []) ''
+          $env.path ++= [
+            ${lib.concatStringsSep "\n\t" (binDirs deps)}
+          ]
+        '')
+
+        (lib.optionalString (libs != []) ''
+          const NU_LIB_DIRS = [
+            ${lib.concatStringsSep "\n\t" libs}
+          ]
+        '')
+
+        (lib.optionalString (plugins != []) ''
+          const NU_PLUGIN_DIRS = [
+            ${lib.concatStringsSep "\n\t" plugins}
+          ]
+        '')
+
+        ''
+          # === : nushell code
+          ${content}
+        ''
+      ]
+    );
   nuScript = {
     deps ? [],
+    libs ? [],
+    plugins ? [],
     nuPkg ? nushell,
   }: text: ''
     #!${lib.getExe nuPkg} --no-config-file
-
-    ${nuStringWithDeps deps text}
+    ${nuStringWithCtx {inherit deps libs plugins;} text}
   '';
   ensureText = maybePath:
     if builtins.isPath maybePath
@@ -37,6 +64,12 @@ in {
   deps
   : Append dependencies from `nixpkgs` to scripts PATH.
 
+  libs
+  : Nushell modules that will be searched by `use` statements.
+
+  plugins
+  : Add plugins to file.
+
   name
   : Base filename. Normally include `.nu` extension here.
 
@@ -45,7 +78,11 @@ in {
 
   *
   */
-  writeNuText = {deps ? []}: name: textOrPath: writeText name (nuStringWithDeps deps (ensureText textOrPath));
+  writeNuText = {
+    deps ? [],
+    libs ? [],
+    plugins ? [],
+  }: name: textOrPath: writeText name (nuStringWithCtx {inherit deps libs plugins;} (ensureText textOrPath));
 
   /**
   Create an executable Nushell script.
@@ -56,6 +93,12 @@ in {
 
   deps
   : Append dependencies from `nixpkgs` to scripts PATH.
+
+  libs
+  : Nushell modules that will be searched by `use` statements.
+
+  plugins
+  : Add plugins to file.
 
   nuPkg
   : Which Nushell package to use as interpreter.
@@ -69,12 +112,14 @@ in {
   */
   writeNu = {
     deps ? [],
+    libs ? [],
+    plugins ? [],
     nuPkg ? nushell,
   }: name: textOrPath:
     writeTextFile {
       inherit name;
       executable = true;
-      text = nuScript {inherit deps nuPkg;} (ensureText textOrPath);
+      text = nuScript {inherit deps libs plugins nuPkg;} (ensureText textOrPath);
     };
 
   /**
@@ -97,6 +142,12 @@ in {
   deps
   : Append dependencies from `nixpkgs` to scripts PATH.
 
+  libs
+  : Nushell modules that will be searched by `use` statements.
+
+  plugins
+  : Add plugins to file.
+
   nuPkg
   : Which Nushell package to use as interpreter.
 
@@ -109,12 +160,14 @@ in {
   */
   writeNuBin = {
     deps ? [],
+    libs ? [],
+    plugins ? [],
     nuPkg ? nushell,
   }: name: textOrPath:
     writeTextFile {
       inherit name;
       executable = true;
       destination = "/bin/${name}";
-      text = nuScript {inherit deps nuPkg;} (ensureText textOrPath);
+      text = nuScript {inherit deps libs plugins nuPkg;} (ensureText textOrPath);
     };
 }
