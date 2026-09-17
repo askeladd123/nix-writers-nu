@@ -12,5 +12,24 @@
   in {
     inherit libUnscoped libFor;
     libPinned = nixpkgs.lib.genAttrs supportedSystems (system: libFor nixpkgs.legacyPackages.${system}); # Functions are provided with specific version of `pkgs` for reproducibility.
+    packages = nixpkgs.lib.genAttrs supportedSystems (
+      system: let
+        pkgs = nixpkgs.legacyPackages.${system};
+      in {
+        docs =
+          pkgs.runCommand "nix-writers-nu-docs" {
+            nativeBuildInputs = [pkgs.nixdoc];
+          } ''
+            mkdir --parents "$out"
+            nixdoc \
+              --file ${./scripts.nix} \
+              --category "" \
+              --description "" \
+              --prefix "" \
+              --anchor-prefix "" \
+              > "$out/scripts.md"
+          '';
+      }
+    );
   };
 }
