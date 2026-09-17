@@ -10,36 +10,33 @@
     libs ? [],
     plugins ? [],
   }: content:
-    lib.concatStringsSep "\n\n" (
-      builtins.filter (s: s != "") [
-        (lib.optionalString (deps != [] || libs != [] || plugins != []) ''
-          # === : nix store dependencies
-        '')
-
-        (lib.optionalString (deps != []) ''
-          $env.path ++= [
-            ${lib.concatStringsSep "\n\t" (binDirs deps)}
-          ]
-        '')
-
-        (lib.optionalString (libs != []) ''
-          const NU_LIB_DIRS = [
-            ${lib.concatStringsSep "\n\t" libs}
-          ]
-        '')
-
-        (lib.optionalString (plugins != []) ''
-          const NU_PLUGIN_DIRS = [
-            ${lib.concatStringsSep "\n\t" plugins}
-          ]
-        '')
-
-        ''
-          # === : nushell code
-          ${content}
-        ''
-      ]
-    );
+    with lib.unique;
+      lib.concatStringsSep "\n\n" (
+        builtins.filter (s: s != "") [
+          (lib.optionalString (deps != [] || libs != [] || plugins != []) ''
+            # === : nix store dependencies
+          '')
+          (lib.optionalString (deps != []) ''
+            $env.path ++= [
+              ${lib.concatStringsSep "\n\t" (binDirs (unique deps))}
+            ]
+          '')
+          (lib.optionalString (libs != []) ''
+            const NU_LIB_DIRS = [
+              ${lib.concatStringsSep "\n\t" (unique libs)}
+            ]
+          '')
+          (lib.optionalString (plugins != []) ''
+            const NU_PLUGIN_DIRS = [
+              ${lib.concatStringsSep "\n\t" (unique plugins)}
+            ]
+          '')
+          ''
+            # === : nushell code
+            ${content}
+          ''
+        ]
+      );
   nuScript = {
     deps ? [],
     libs ? [],
